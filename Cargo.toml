@@ -1,0 +1,13 @@
+[package]
+name = "hello"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aes = "0.8"
+rand = "0.8"
+image = "0.24"
+hex = "0.4.3"
+rayon = "1.11.0"
+
+
