@@ -1,4 +1,4 @@
-# AES-CTR XOR Pad for Images
+# AES-CTR Image Encryption/Decription
 
 This Rust program provides **image encryption and decryption** using **AES-256 in Counter (CTR) mode**.  
 It generates a keystream from AES-256, which is then XORed with each pixel of an image. This process is **reversible**: applying the same operation again with the same key restores the original image.
