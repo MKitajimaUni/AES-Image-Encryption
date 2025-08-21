@@ -216,6 +216,7 @@ name = "hello"
 version = "0.1.0"
 dependencies = [
  "aes",
+ "gif",
  "hex",
  "image",
  "rand",
