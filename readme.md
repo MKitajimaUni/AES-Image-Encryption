@@ -8,6 +8,7 @@ It generates a keystream from AES-256, which is then XORed with each pixel of an
    - This program just demonstrates AES-CTR for images.
    - Hence, this program is not intended for any serious use.
    - Only `.png` is supported for the output type. You can encrypt other formats like `.jpeg` or `.jpg`, but the output image must be in `.png`.
+   - All images are encoded/decoded with RGB.
 ---
 
 ## 🔐 How It Works
@@ -48,9 +49,9 @@ cargo run -- e img_example_bologna.jpeg img_encrypted.png
 ```
 #### Decryption
 ```
-cargo run -- d <image_path> <xor_key> <output-path>
+cargo run -- d <image_path> <output-path> <xor_key>
 ```
 #### Try:
 ```
-cargo run -- d img_encrypted.png <your_own_key> img_decrypted.png
+cargo run -- d img_encrypted.png img_decrypted.png <your_own_key>
 ```
