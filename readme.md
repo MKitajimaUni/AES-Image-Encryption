@@ -7,8 +7,9 @@ It generates a keystream from AES-256, which is then XORed with each pixel of an
 ## ⚠️Important Notes
    - This program just demonstrates AES-CTR for images.
    - Hence, this program is not intended for any serious use.
-   - Only `.png` is supported for the output type. You can encrypt other formats like `.jpeg` or `.jpg`, but the output image must be in `.png`.
+   - Only `.png` and `.gif` is supported for the output type. You can encrypt other formats like `.jpeg` or `.jpg`, but the output image must be in `.png` (or `.gif`).
    - All images are encoded/decoded with RGB.
+   - `.gif` encryption and decryption is incomplete. 
 ---
 
 ## 🔐 How It Works
