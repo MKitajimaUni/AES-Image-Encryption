@@ -48,9 +48,9 @@ cargo run -- e img_example_bologna.jpeg img_encrypted.png
 ```
 #### Decryption
 ```
-cargo run -- d <image_path> <xor_key> <output-path>
+cargo run -- d <image_path> <output-path> <xor_key>
 ```
 #### Try:
 ```
-cargo run -- d img_encrypted.png <your_own_key> img_decrypted.png
+cargo run -- d img_encrypted.png img_decrypted.png <your_own_key>
 ```
