@@ -1,4 +1,4 @@
-use image::RgbImage;
+use image::{RgbaImage};
 
 pub trait ImageCrypt {
 
@@ -6,11 +6,10 @@ pub trait ImageCrypt {
     fn decrypt(&self, key: String);
 
     // generator and encrypt/decrypt
-    fn xor_image(&self, img: RgbImage, xor_key: RgbImage) -> RgbImage;
+    fn xor_image(&self, img: RgbaImage, xor_key: RgbaImage) -> RgbaImage;
     fn generate_key(&self) -> [u8; 32];
-    fn generate_xor_pad(&self, key: &[u8; 32], width: u32, height: u32) -> RgbImage;
 
     // helper functions
-    fn save_image(&self, img: RgbImage, output_path: String);
+    fn save_image(&self, img: RgbaImage, output_path: String);
     fn hex_to_key(&self, hex_str: &str) -> [u8; 32];
 }
