@@ -2,13 +2,15 @@ use crate::imagecrypt::ImageCrypt;
 use aes::Aes256;
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::{BlockEncrypt, KeyInit};
-use gif::{DecodeOptions, Encoder, Frame};
+use gif::{DecodeOptions, Encoder, Frame, Repeat};
 use image::{Rgba, RgbaImage};
 use rand::Rng;
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::prelude::ParallelSliceMut;
+use std::fs;
 use std::fs::File;
+use std::path::{Path, PathBuf};
 
 pub struct GIFImageCrypt {
     image_path: String,
@@ -63,9 +65,9 @@ impl ImageCrypt for GIFImageCrypt {
             })
             .collect();
 
-        self.save_gif(encrypted_gif, self.output_path.clone());
+        self.pngs_to_gif(encrypted_gif, &self.output_path, 10);
 
-        println!("Decrypted image saved.");
+        println!("Decrypted image or gif saved.");
     }
 
     fn xor_image(&self, mut img: RgbaImage, xor_key: RgbaImage) -> RgbaImage {
@@ -112,24 +114,48 @@ impl ImageCrypt for GIFImageCrypt {
 
 impl GIFImageCrypt {
     pub(crate) fn new(image_path: String, output_path: String) -> Self {
-        let mut decoder = DecodeOptions::new();
-        decoder.set_color_output(gif::ColorOutput::RGBA);
-        let file = File::open(image_path.clone()).unwrap();
-        let mut reader = decoder.read_info(std::io::BufReader::new(file)).unwrap();
+        let path = Path::new(&image_path);
 
-        let mut frames = Vec::new();
-        while let Some(frame) = reader.read_next_frame().unwrap() {
-            let buffer = &frame.buffer;
-            let mut img = RgbaImage::new(frame.width.into(), frame.height.into());
+        let frames = if path.is_file() && path.extension().map(|e| e == "gif").unwrap_or(false) {
+            // ===== GIF を読み込む処理 =====
+            let mut decoder = DecodeOptions::new();
+            decoder.set_color_output(gif::ColorOutput::RGBA);
+            let file = File::open(path).unwrap();
+            let mut reader = decoder.read_info(std::io::BufReader::new(file)).unwrap();
 
-            for (x, y, pixel) in img.enumerate_pixels_mut() {
-                let i = (y as usize * frame.width as usize + x as usize) * 4;
+            let mut frames = Vec::new();
+            while let Some(frame) = reader.read_next_frame().unwrap() {
+                let buffer = &frame.buffer;
+                let mut img = RgbaImage::new(frame.width.into(), frame.height.into());
 
-                *pixel = Rgba([buffer[i], buffer[i + 1], buffer[i + 2], buffer[i + 3]]);
+                for (x, y, pixel) in img.enumerate_pixels_mut() {
+                    let i = (y as usize * frame.width as usize + x as usize) * 4;
+                    *pixel = Rgba([buffer[i], buffer[i + 1], buffer[i + 2], buffer[i + 3]]);
+                }
+
+                frames.push(img);
+            }
+            frames
+        } else if path.is_dir() {
+            let mut frames = Vec::new();
+
+            let mut entries: Vec<PathBuf> = fs::read_dir(path)
+                .unwrap()
+                .filter_map(|e| e.ok().map(|e| e.path()))
+                .filter(|p| p.extension().map(|e| e == "png").unwrap_or(false))
+                .collect();
+
+            entries.sort(); // frame0.png, frame1.png...
+
+            for entry in entries {
+                let img = image::open(&entry).unwrap().to_rgba8();
+                frames.push(img);
             }
 
-            frames.push(img);
-        }
+            frames
+        } else {
+            panic!("Unsupported input path: {:?}", path);
+        };
 
         GIFImageCrypt {
             image_path,
@@ -138,32 +164,33 @@ impl GIFImageCrypt {
         }
     }
 
-    fn save_gif(&self, frames: Vec<RgbaImage>, output_path: String) {
-        // 出力ファイルを開く
-        let mut image_file = File::create(output_path).expect("Failed to create file");
+    pub fn save_gif(&self, frames: Vec<RgbaImage>, output_path: String) {
+        let path = Path::new(&output_path);
+            // ===== ディレクトリに PNG として保存 =====
+            fs::create_dir_all(path).unwrap();
 
+            for (idx, img) in frames.iter().enumerate() {
+                let out_path = path.join(format!("frame{:03}.png", idx));
+                img.save(out_path).unwrap();
+            }
+    }
+
+    fn pngs_to_gif(&self, frames: Vec<RgbaImage>, output_path: &str, delay: i32) {
         let width = frames[0].width() as u16;
         let height = frames[0].height() as u16;
+
+        let mut image_file = File::create(output_path).expect("Failed to create GIF file");
         let mut encoder =
             Encoder::new(&mut image_file, width, height, &[]).expect("Failed to create encoder");
 
-        let frames_to_write: Vec<Frame> = frames
-            .par_iter()
-            .map(|img| {
-                let width = img.width() as u16;
-                let height = img.height() as u16;
+        encoder
+            .set_repeat(Repeat::Infinite)
+            .expect("Failed to set repeat size");
 
-                let mut buffer = img.clone().into_raw();
-
-                let mut frame = Frame::from_rgba(width, height, &mut *buffer);
-                frame.delay = 10;
-                frame
-            })
-            .collect();
-
-        // 書き込みは逐次処理
-        for frame in frames_to_write {
-            encoder.write_frame(&frame).expect("Failed to write frame");
+        for img in frames {
+            let mut buffer = img.into_raw(); // RGBA → Vec<u8>
+            let frame = Frame::from_rgba_speed(width, height, &mut buffer, delay);
+            encoder.write_frame(&frame).unwrap();
         }
     }
 

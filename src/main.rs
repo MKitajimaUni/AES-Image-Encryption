@@ -6,6 +6,7 @@ extern crate image;
 use imagecrypt::ImageCrypt;
 use imagecrypt_png::PNGImageCrypt;
 use std::env;
+use std::path::Path;
 use crate::imagecrypt_gif::GIFImageCrypt;
 
 fn main() {
@@ -25,13 +26,14 @@ fn main() {
         return;
     }
 
+    let path = Path::new(&args[2]);
     // which extension type?
     let img_crypt: Box<dyn ImageCrypt> = if args[2].ends_with(".png")
         || args[2].ends_with(".jpg")
         || args[2].ends_with(".jpeg")
     {
         Box::new(PNGImageCrypt::new(args[2].clone(), args[3].clone()))
-    } else if args[2].ends_with(".gif") {
+    } else if path.is_dir() || args[2].ends_with(".gif") {
         Box::new(GIFImageCrypt::new(args[2].clone(), args[3].clone()))
     } else {
         panic!("Unsupported file type");
