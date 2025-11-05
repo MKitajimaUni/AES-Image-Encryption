@@ -50,15 +50,15 @@ impl ImageCrypt for PNGImageCrypt {
     }
 
     fn xor_image(&self, mut img: RgbaImage, xor_key: RgbaImage) -> RgbaImage {
-        let channels = 4;
+        const CHANNELS: usize = 4;
 
-        let img_buf = img.as_mut();          // &mut [u8]
-        let key_buf = xor_key.into_raw();    // Vec<u8>, 長さは width*height*4
-
-        // 前方向に 4 バイトずつ（=1ピクセル）処理する
+        let img_buf = img.as_mut();  // &mut [u8]
+        let key_buf = xor_key.into_raw();    // raw buffer of Image
+        
+        // combine chunks of key and image buffer
         img_buf
-            .par_chunks_mut(channels) // ← par_rchunks_mut から変更
-            .zip(key_buf.par_chunks(channels))
+            .par_chunks_mut(CHANNELS)
+            .zip(key_buf.par_chunks(CHANNELS)) 
             .for_each(|(pix, k)| {
                 pix[0] ^= k[0];
                 pix[1] ^= k[1];
@@ -103,14 +103,14 @@ impl PNGImageCrypt {
     }
 
     fn generate_xor_pad(&self, key: &[u8; 32], width: u32, height: u32) -> RgbaImage {
-        let channels = 4;
-        let aes_block = 16;
+        const CHANNELS: u32 = 4;
+        const AES_BLOCK_IN_BIT: usize = 16;
         let cipher = Aes256::new(GenericArray::from_slice(key));
 
-        let total = (width * height * channels) as usize;
+        let total = (width * height * CHANNELS) as usize;
         let mut ks = vec![0u8; total];
 
-        ks.par_chunks_mut(aes_block)
+        ks.par_chunks_mut(AES_BLOCK_IN_BIT)
             .enumerate()
             .for_each(|(i, block)| {
                 let mut ctr = GenericArray::clone_from_slice(&(i as u128).to_be_bytes());

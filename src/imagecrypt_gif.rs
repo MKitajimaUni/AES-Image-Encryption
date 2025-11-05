@@ -13,7 +13,6 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 pub struct GIFImageCrypt {
-    image_path: String,
     output_path: String,
     gif_frames: Vec<RgbaImage>,
 }
@@ -37,7 +36,7 @@ impl ImageCrypt for GIFImageCrypt {
             })
             .collect();
 
-        self.save_gif(encrypted_gif, self.output_path.clone());
+        self.save_gif_in_dir(encrypted_gif, self.output_path.clone());
 
         println!(
             "Encrypted image saved to {}.\n\
@@ -48,9 +47,10 @@ impl ImageCrypt for GIFImageCrypt {
     }
 
     fn decrypt(&self, key: String) {
+        const DELAY: i32 = 10;
         let key = self.hex_to_key(&key);
 
-        let encrypted_gif = self
+        let decrypted_gif = self
             .gif_frames
             .par_iter()
             .enumerate()
@@ -65,7 +65,7 @@ impl ImageCrypt for GIFImageCrypt {
             })
             .collect();
 
-        self.pngs_to_gif(encrypted_gif, &self.output_path, 10);
+        self.pngs_to_gif(decrypted_gif, &self.output_path, DELAY);
 
         println!("Decrypted image or gif saved.");
     }
@@ -74,17 +74,16 @@ impl ImageCrypt for GIFImageCrypt {
         // xor implementation
         let channels = 4;
         let img_buf = img.as_mut();
-        let key_buf = xor_key.into_raw(); // Vec<u8> で取り出す
+        let mut key_buf = xor_key.into_raw(); // raw buffer of RGBA image
 
         img_buf
-            .par_rchunks_mut(channels) // 画像の各ピクセル(R,G,B)を並列で処理
-            .enumerate()
-            .for_each(|(i, pixel)| {
-                let j = i * 4;
-                pixel[0] ^= key_buf[j];
-                pixel[1] ^= key_buf[j + 1];
-                pixel[2] ^= key_buf[j + 2];
-                pixel[3] ^= key_buf[j + 3];
+            .par_rchunks_mut(channels) // XOR each pixel
+            .zip(key_buf.par_chunks_mut(channels))
+            .for_each(|(img_buf, key_buf)| {
+                img_buf[0] ^= key_buf[0];
+                img_buf[1] ^= key_buf[1];
+                img_buf[2] ^= key_buf[2];
+                img_buf[3] ^= key_buf[3];
             });
 
         img
@@ -117,13 +116,15 @@ impl GIFImageCrypt {
         let path = Path::new(&image_path);
 
         let frames = if path.is_file() && path.extension().map(|e| e == "gif").unwrap_or(false) {
-            // ===== GIF を読み込む処理 =====
+            // encoding gif
             let mut decoder = DecodeOptions::new();
             decoder.set_color_output(gif::ColorOutput::RGBA);
-            let file = File::open(path).unwrap();
+            let file =
+                File::open(path).unwrap_or_else(|_| panic!("Could not open file: {:?}", path));
             let mut reader = decoder.read_info(std::io::BufReader::new(file)).unwrap();
 
             let mut frames = Vec::new();
+            // code referred from official document. Non-parallel because frames must keep the original order
             while let Some(frame) = reader.read_next_frame().unwrap() {
                 let buffer = &frame.buffer;
                 let mut img = RgbaImage::new(frame.width.into(), frame.height.into());
@@ -158,21 +159,20 @@ impl GIFImageCrypt {
         };
 
         GIFImageCrypt {
-            image_path,
             output_path,
             gif_frames: frames,
         }
     }
 
-    pub fn save_gif(&self, frames: Vec<RgbaImage>, output_path: String) {
+    pub fn save_gif_in_dir(&self, frames: Vec<RgbaImage>, output_path: String) {
         let path = Path::new(&output_path);
-            // ===== ディレクトリに PNG として保存 =====
-            fs::create_dir_all(path).unwrap();
+        // save encrypted gif as a directory of images
+        fs::create_dir_all(path).unwrap();
 
-            for (idx, img) in frames.iter().enumerate() {
-                let out_path = path.join(format!("frame{:03}.png", idx));
-                img.save(out_path).unwrap();
-            }
+        for (idx, img) in frames.iter().enumerate() {
+            let out_path = path.join(format!("frame{:03}.png", idx));
+            img.save(out_path).unwrap();
+        }
     }
 
     fn pngs_to_gif(&self, frames: Vec<RgbaImage>, output_path: &str, delay: i32) {
@@ -201,21 +201,22 @@ impl GIFImageCrypt {
         width: u32,
         height: u32,
     ) -> RgbaImage {
-        let aes_block_size = 16;
-        let channels = 4;
+        const AES_BLOCK_SIZE: usize = 16;
+        const CHANNELS: u32 = 4; // because RGBA
         let cipher = Aes256::new(GenericArray::from_slice(key));
 
-        let total_bytes = (width * height * channels) as usize;
-        let mut keystream = vec![0u8; total_bytes];
+        let total_bytes = (width * height * CHANNELS) as usize;
+        let mut keystream = vec![0u8; total_bytes]; // zeroed-vector
 
         keystream
-            .par_chunks_mut(aes_block_size)
+            .par_chunks_mut(AES_BLOCK_SIZE)
             .enumerate()
             .for_each(|(i, block)| {
                 let idx = i as u128 + (total_bytes as u128 * frame_idx);
                 let mut counter_block = GenericArray::clone_from_slice(&(idx.to_be_bytes()));
                 cipher.encrypt_block(&mut counter_block);
 
+                // if chunk_size = n < 16, copy only first n bytes
                 let len = block.len();
                 block.copy_from_slice(&counter_block[..len]);
             });
