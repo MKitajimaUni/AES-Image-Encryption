@@ -4,20 +4,21 @@ This Rust program provides **image encryption and decryption** using **AES-256 i
 It generates a keystream from AES-256, which is then XORed with each pixel of an image. This process is **reversible**: applying the same operation again with the same key restores the original image.
 
 ---
-## ⚠️Important Notes
+## Important Notes
    - This program just demonstrates AES-CTR for images.
-   - Hence, this program is not intended for any serious use.
+   - Hence, this program is **not intended for any serious use**.
    - Only `.png` and `.gif` is supported for the output type. You can encrypt other formats like `.jpeg` or `.jpg`, but the output image must be in `.png` (or `.gif`).
    - All images are encoded/decoded with RGBA.
    - Decrypted `.gif` file has fixed speed, regardless of the speed of original file.
+   - The code heavily relies on built-in parallel iterators. Because of it, the code is not quite memory efficient.
 ---
 
-## 🔐 How It Works
+## How It Works
 
 1. **AES-CTR mode**
     - AES-256 is used as a block cipher.
     - A counter value (`u128`) is encrypted with AES to generate a pseudorandom block of bytes.
-    - The counter is incremented for each block (along entire data stream for `.gif` file), ensuring a unique keystream for every part of the image.
+    - The counter is incremented for each block (along entire data stream for `.gif` file to avoid consistency of encrypted frames), ensuring a unique keystream for every part of the image.
     - The result is a keystream of bytes, as long as the image data.
 
 2. **XOR with Image Data**
@@ -28,12 +29,12 @@ It generates a keystream from AES-256, which is then XORed with each pixel of an
 
 3. **Optimizations**
     - **Parallel Keystream Generation:**  
-      Using [Rayon](https://github.com/rayon-rs/rayon), AES blocks are generated in parallel (`par_chunks_mut`), making full use of multi-core CPUs.
-    - **Parallel Pixel XOR:**  
+      Using [Rayon](https://github.com/rayon-rs/rayon), AES blocks are generated in parallel (`par_chunks_mut`), making full use of multicore CPUs.
+    - **Parallel Pixel XOR:**
       The XOR operation is applied per pixel (`par_rchunks_mut`) in parallel, again leveraging multiple cores for speed.
 ---
 
-## 🚀 Usage
+## Usage and Examples
 
 ### Build
 ```bash
