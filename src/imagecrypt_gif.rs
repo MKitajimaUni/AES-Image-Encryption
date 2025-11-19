@@ -95,7 +95,7 @@ impl ImageCrypt for GIFImageCrypt {
         raw_key
     }
 
-    fn save_image(&self, img: RgbaImage, output_path: String) {}
+    fn save_image(&self, _img: RgbaImage, _output_path: String) {}
 
     fn hex_to_key(&self, hex_str: &str) -> [u8; 32] {
         let bytes = hex::decode(hex_str).expect("Invalid hex string");

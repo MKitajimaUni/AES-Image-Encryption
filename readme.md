@@ -22,7 +22,7 @@ It generates a keystream from AES-256, which is then XORed with each pixel of an
     - The result is a keystream of bytes, as long as the image data.
 
 2. **XOR with Image Data**
-    - The RGB pixel data of the image is extracted.
+    - The RGBA pixel data of the image is extracted.
     - Each byte of the image (R, G, B, A channels) is XORed with the corresponding byte from the keystream.
     - This produces the encrypted image.
     - Decryption is the same process: XORing again with the same keystream restores the original image.
