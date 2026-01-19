@@ -8,7 +8,7 @@ use rand::Rng;
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::prelude::ParallelSliceMut;
-use std::fs;
+use std::{fs, u8};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
@@ -124,8 +124,23 @@ impl GIFImageCrypt {
             let mut reader = decoder.read_info(std::io::BufReader::new(file)).unwrap();
 
             let mut frames = Vec::new();
+            
             // code referred from official document. Non-parallel because frames must keep the original order
+            // Current version does not support compressed .gif file,
+            // so it panics if the input gif is compressed
+            let mut width_first :u16 = 0;
+            let mut height_first :u16 = 0;
+            let mut is_first = true;
             while let Some(frame) = reader.read_next_frame().unwrap() {
+                if is_first {
+                    width_first = frame.width;
+                    height_first = frame.height;
+                    is_first = false;
+
+                } else if frame.width != width_first || frame.height != height_first {
+                    panic!("Encryption of compressed GIF file is not supported. Please try again with non-compressed GIF sile.");
+                }
+
                 let buffer = &frame.buffer;
                 let mut img = RgbaImage::new(frame.width.into(), frame.height.into());
 
@@ -137,6 +152,7 @@ impl GIFImageCrypt {
                 frames.push(img);
             }
             frames
+
         } else if path.is_dir() {
             let mut frames = Vec::new();
 
@@ -224,4 +240,5 @@ impl GIFImageCrypt {
         RgbaImage::from_raw(width, height, keystream)
             .expect("Failed to create RgbImage from keystream")
     }
+
 }
