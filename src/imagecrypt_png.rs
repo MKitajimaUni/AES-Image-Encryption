@@ -104,13 +104,13 @@ impl PNGImageCrypt {
 
     fn generate_xor_pad(&self, key: &[u8; 32], width: u32, height: u32) -> RgbaImage {
         const CHANNELS: u32 = 4;
-        const AES_BLOCK_IN_BIT: usize = 16;
+        const AES_BLOCK_IN_BYTE: usize = 16;
         let cipher = Aes256::new(GenericArray::from_slice(key));
 
         let total = (width * height * CHANNELS) as usize;
         let mut ks = vec![0u8; total];
 
-        ks.par_chunks_mut(AES_BLOCK_IN_BIT)
+        ks.par_chunks_mut(AES_BLOCK_IN_BYTE)
             .enumerate()
             .for_each(|(i, block)| {
                 let mut ctr = GenericArray::clone_from_slice(&(i as u128).to_be_bytes());
@@ -118,7 +118,6 @@ impl PNGImageCrypt {
                 block.copy_from_slice(&ctr[..block.len()]);
             });
 
-        debug_assert_eq!(ks.len(), total);
         RgbaImage::from_raw(width, height, ks)
             .expect("keystream layout mismatch")
     }
