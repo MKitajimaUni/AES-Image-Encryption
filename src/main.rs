@@ -18,8 +18,8 @@ fn main() {
     // arg[4] = xor key (for decryption)
     if args.len() < 4 {
         println!(
-            "Usage for encryption: cargo run <type> <image_path> <output-path>\n\
-                 Usage for decryption: cargo run <type> <image_path> <output-path>　<xor_key>\n\
+            "Usage for encryption: cargo run -- <type> <image_path> <output-path>\n\
+                 Usage for decryption: cargo run -- <type> <image_path> <output-path>　<xor_key>\n\
                  <type> can be 'e' for encryption and 'd' for decryption.\n\
             "
         );
