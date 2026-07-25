@@ -69,46 +69,6 @@ impl ImageCrypt for GIFImageCrypt {
 
         println!("Decrypted image or gif saved.");
     }
-
-    fn xor_image(&self, mut img: RgbaImage, xor_key: RgbaImage) -> RgbaImage {
-        // xor implementation
-        let channels = 4;
-        let img_buf = img.as_mut();
-        let mut key_buf = xor_key.into_raw(); // raw buffer of RGBA image
-
-        img_buf
-            .par_rchunks_mut(channels) // XOR each pixel
-            .zip(key_buf.par_chunks_mut(channels))
-            .for_each(|(img_buf, key_buf)| {
-                img_buf[0] ^= key_buf[0];
-                img_buf[1] ^= key_buf[1];
-                img_buf[2] ^= key_buf[2];
-                img_buf[3] ^= key_buf[3];
-            });
-
-        img
-    }
-
-    fn generate_key(&self) -> [u8; 32] {
-        let mut raw_key = [0u8; 32];
-        rand::thread_rng().fill(&mut raw_key);
-        raw_key
-    }
-
-    fn save_image(&self, _img: RgbaImage, _output_path: String) {}
-
-    fn hex_to_key(&self, hex_str: &str) -> [u8; 32] {
-        let bytes = hex::decode(hex_str).expect("Invalid hex string");
-        assert_eq!(
-            bytes.len(),
-            32,
-            "Key must be exactly 32 bytes (64 hex chars)"
-        );
-
-        let mut key = [0u8; 32];
-        key.copy_from_slice(&bytes);
-        key
-    }
 }
 
 impl GIFImageCrypt {
@@ -241,4 +201,41 @@ impl GIFImageCrypt {
             .expect("Failed to create RgbImage from keystream")
     }
 
+       fn xor_image(&self, mut img: RgbaImage, xor_key: RgbaImage) -> RgbaImage {
+        // xor implementation
+        let channels = 4;
+        let img_buf = img.as_mut();
+        let mut key_buf = xor_key.into_raw(); // raw buffer of RGBA image
+
+        img_buf
+            .par_rchunks_mut(channels) // XOR each pixel
+            .zip(key_buf.par_chunks_mut(channels))
+            .for_each(|(img_buf, key_buf)| {
+                img_buf[0] ^= key_buf[0];
+                img_buf[1] ^= key_buf[1];
+                img_buf[2] ^= key_buf[2];
+                img_buf[3] ^= key_buf[3];
+            });
+
+        img
+    }
+
+    fn generate_key(&self) -> [u8; 32] {
+        let mut raw_key = [0u8; 32];
+        rand::thread_rng().fill(&mut raw_key);
+        raw_key
+    }
+
+    fn hex_to_key(&self, hex_str: &str) -> [u8; 32] {
+        let bytes = hex::decode(hex_str).expect("Invalid hex string");
+        assert_eq!(
+            bytes.len(),
+            32,
+            "Key must be exactly 32 bytes (64 hex chars)"
+        );
+
+        let mut key = [0u8; 32];
+        key.copy_from_slice(&bytes);
+        key
+    }
 }
