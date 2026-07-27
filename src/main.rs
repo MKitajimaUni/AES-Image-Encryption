@@ -46,6 +46,7 @@ fn main() {
     {
         Box::new(PNGImageCrypt::new(args[3].clone(), args[4].clone(), ciphermode))
     } else if path.is_dir() || args[3].ends_with(".gif") {
+        println!("Warning! GIF encryption only supports CTR mode.");
         Box::new(GIFImageCrypt::new(args[3].clone(), args[4].clone()))
     } else {
         panic!("Unsupported file type");
