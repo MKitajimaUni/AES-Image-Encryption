@@ -1,79 +1,51 @@
-# AES-CTR XOR Pad for Images
+# Image Encryption with Block Cipher Modes (AES-256-CTR, AES-256-CBC, AES-256-ECB)
 
-This Rust program provides **image encryption and decryption** using **AES-256 in Counter (CTR) mode**.  
-It generates a keystream from AES-256, which is then XORed with each pixel of an image. This process is **reversible**: applying the same operation again with the same key restores the original image.
-
----
-## Important Notes
-   - This program just demonstrates AES-CTR for images.
-   - Hence, this program is **not intended for any serious use**.
-   - Only `.png` and `.gif` is supported for the output type. You can encrypt other formats like `.jpeg` or `.jpg`, but the output image must be in `.png` (or `.gif`).
-   - All images are encoded/decoded with RGBA.
-   - Decrypted `.gif` file has fixed speed, regardless of the speed of original file.
-   - The code heavily relies on built-in parallel iterators. Because of it, the code is not quite memory efficient.
----
-
-## How It Works
-
-1. **AES-CTR mode**
-    - AES-256 is used as a block cipher.
-    - A counter value (`u128`) is encrypted with AES to generate a pseudorandom block of bytes.
-    - The counter is incremented for each block (along entire data stream for `.gif` file to avoid consistency of encrypted frames), ensuring a unique keystream for every part of the image.
-    - The result is a keystream of bytes, as long as the image data.
-
-2. **XOR with Image Data**
-    - The RGBA pixel data of the image is extracted.
-    - Each byte of the image (R, G, B, A channels) is XORed with the corresponding byte from the keystream.
-    - This produces the encrypted image.
-    - Decryption is the same process: XORing again with the same keystream restores the original image.
-
-3. **Optimizations**
-    - **Parallel Keystream Generation:**  
-      Using [Rayon](https://github.com/rayon-rs/rayon), AES blocks are generated in parallel (`par_chunks_mut`), making full use of multicore CPUs.
-    - **Parallel Pixel XOR:**
-      The XOR operation is applied per pixel (`par_rchunks_mut`) in parallel, again leveraging multiple cores for speed.
----
-
-## Usage and Examples
+# Usage and Examples
 
 ### Build
 ```bash
 cargo build --release
 ```
 ### Run
+```
+<cipher_mode> = [ECB | CBC | CTR]
+<image_path> = path to the image file
+<output_path> = path to save the encrypted/decrypted image
+<xor_key> = xor key (for decryption)
+```
 #### Encryption
 For `.png`:
 ```
-cargo run -- e <image_path> <output-path>
+cargo run -- e <cipher_mode> <image_path> <output-path>
 ```
 For `.gif`:
 ```
-cargo run -- e <image_path> <output-dir-path>
+cargo run -- e <cipher_mode> <image_path> <output-dir-path>
 ```
 #### Try:
 For `.png`:
 ```
-cargo run -- e img_example_bologna.jpeg img_encrypted.png
+cargo run -- e ECB img_example_bologna.jpeg img_encrypted.png
 ```
 For `.gif`:
 ```
-cargo run -- e gif_example_cat.gif encrypted
+cargo run -- e CTR gif_example_cat.gif encrypted
 ```
 #### Decryption
 For `.png`:
 ```
-cargo run -- d <image_path> <output_path> <xor_key>
+cargo run -- d <cipher_mode> <image_path> <output_path> <xor_key>
 ```
 For `.gif`:
 ```
-cargo run -- d <dir_path> <gif_output_path> <xor_key>
+cargo run -- d <cipher_mode> <dir_path> <gif_output_path> <xor_key>
 ```
 #### Try:
 For `.png`:
 ```
-cargo run -- d img_encrypted.png img_decrypted.png <your_own_key>
+cargo run -- d ECB img_encrypted.png img_decrypted.png <your_own_key>
 ```
 For `.gif`:
 ```
-cargo run -- d encrypted decrypted.gif <your_own_key>
+cargo run -- d CTR encrypted decrypted.gif <your_own_key>
 ```
